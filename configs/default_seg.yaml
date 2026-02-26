@@ -1,0 +1,73 @@
+# ============================================================
+# Cellpose 3 — Segmentation Training & Inference Config
+# ============================================================
+# Architecture: Res-U-Net (backbone="default"), pretrained on cyto3
+# DO NOT change pretrained_model to "cpsam" — wrong architecture.
+# ============================================================
+
+model:
+  # REQUIRED: must be "cyto3" for Cellpose 3 Res-U-Net architecture.
+  # In cellpose >= 4.0 the default switched to "cpsam"; always set explicitly.
+  pretrained_model: "cyto3"
+  # backbone="default" → Res-U-Net  |  "transformer" → SegFormer (cpsam only)
+  backbone: "default"
+
+eval:
+  # channels: [cytoplasm_channel, nuclear_channel]
+  #   0 = grayscale / not present
+  #   1 = red, 2 = green, 3 = blue
+  # Examples:
+  #   [0, 0]  → grayscale image, no nucleus channel
+  #   [1, 2]  → red=cytoplasm, green=nucleus
+  #   [2, 3]  → green=cytoplasm, blue=nucleus
+  # REQUIRED for cyto3 — cpsam is channel-invariant but cyto3 is NOT.
+  channels: [0, 0]
+
+  # Mean cell diameter in pixels. REQUIRED for cyto3 (size-dependent model).
+  # cyto3 was trained with ~30 px default; adjust to match your data.
+  diameter: 30.0
+
+  # Flow quality threshold: predicted flow error below which a pixel is kept.
+  # Higher → stricter (fewer cells), lower → more permissive (more cells).
+  flow_threshold: 0.4
+
+  # Cell probability threshold: logit cutoff for foreground pixels.
+  # Increase to shrink masks; decrease to expand them.
+  cellprob_threshold: 0.0
+
+  # Enable volumetric 3D segmentation (set true for z-stack inputs).
+  do_3D: false
+
+  # Max number of iterations for mask construction (None → auto from diameter).
+  niter: null
+
+training:
+  # Recommended cyto3 fine-tuning hyperparameters.
+  # NOTE: cpsam uses lr=1e-5, weight_decay=0.1, n_epochs=100, batch_size=1.
+  # cyto3 tolerates higher lr and batch_size.
+  learning_rate: 1.0e-5
+  weight_decay: 0.1
+  n_epochs: 100
+  batch_size: 8
+
+  # Minimum number of annotated masks per image (images with fewer are skipped).
+  min_train_masks: 5
+
+  # Save a model checkpoint every N epochs (0 = only save final).
+  save_every: 50
+
+  # Directory where trained model weights are written.
+  save_path: "outputs/models"
+
+  # Base name for the saved model file.
+  model_name: "cyto3_seg_custom"
+
+data:
+  # Root directory containing training images and _seg.npy label files.
+  # Cellpose expects files named:  <name>.tif  +  <name>_seg.npy
+  train_dir: "data/train"
+  test_dir: "data/test"   # optional; set null to skip validation
+
+  # File extensions to load from train_dir / test_dir.
+  image_filter: ".tif"
+  mask_filter: "_seg.npy"

@@ -1,0 +1,39 @@
+# ============================================================
+# Cellpose 3 Training & Testing Pipeline — Dependencies
+# ============================================================
+#
+# cellpose version constraints:
+#   >=3.0   — first version with denoise.CellposeDenoiseModel &
+#              denoise.DenoiseModel (restoration support)
+#   <5.0    — upper bound to avoid breaking changes beyond known API
+#
+# When using cellpose 4.x:
+#   - cyto3 is still available but is NO LONGER the default model.
+#   - Always set pretrained_model="cyto3" explicitly.
+#   - The removed models.Cellpose class must NOT be used;
+#     use models.CellposeModel(pretrained_model="cyto3") instead.
+# ============================================================
+
+# Core — cellpose with GPU support (install torch separately or via extras)
+cellpose>=3.0,<5.0
+
+# Deep learning backend (GPU-enabled; install the CUDA variant appropriate
+# for your hardware from https://pytorch.org/get-started/locally/)
+torch>=2.0
+
+# Scientific Python stack
+numpy>=1.24
+scikit-image>=0.20
+matplotlib>=3.7
+tifffile>=2023.1
+
+# Config parsing
+pyyaml>=6.0
+
+# Optional — accelerated image I/O and multi-dim arrays
+# imageio>=2.28
+# zarr>=2.16
+
+# Optional — experiment tracking
+# tensorboard>=2.13
+# wandb>=0.15
