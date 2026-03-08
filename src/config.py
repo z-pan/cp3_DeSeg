@@ -91,10 +91,59 @@ class SegTrainingConfig:
 
 @dataclass
 class DataConfig:
-    train_dir: str = "data/train"
-    test_dir: Optional[str] = "data/test"
-    image_filter: str = ".tif"
-    mask_filter: str = "_seg.npy"
+    """Dataset layout for segmentation and restoration training.
+
+    Directory layout expected on disk::
+
+        {root_dir}/
+            {train_subdir}/
+                {clean_subdir}/<stem>.tif    # 8-bit grayscale, model input
+                {noisy_subdir}/<stem>.tif    # 8-bit grayscale, degraded input
+                {masks_subdir}/<stem>.png    # 16-bit grayscale, instance labels
+            {val_subdir}/                    # same sub-structure as train
+                ...
+
+    File stems are identical across subdirectories; only extensions differ.
+    """
+
+    root_dir: str = "train_data_ready"
+    train_subdir: str = "train"
+    val_subdir: Optional[str] = "val"   # set null to skip validation
+
+    clean_subdir: str = "clean"         # 8-bit .tif — restoration targets / seg inputs
+    noisy_subdir: str = "noisy"         # 8-bit .tif — real degraded inputs
+    masks_subdir: str = "masks"         # 16-bit .png — integer instance labels
+
+    image_ext: str = ".tif"             # extension for clean/ and noisy/ images
+    mask_ext: str = ".png"              # extension for masks/ label images
+
+    # Restoration training: use real paired noisy images instead of synthetic aug.
+    # Set false to ignore noisy_subdir and rely on augmentation block instead.
+    use_real_noisy: bool = True
+
+    def clean_train_dir(self) -> Path:
+        return Path(self.root_dir) / self.train_subdir / self.clean_subdir
+
+    def noisy_train_dir(self) -> Path:
+        return Path(self.root_dir) / self.train_subdir / self.noisy_subdir
+
+    def masks_train_dir(self) -> Path:
+        return Path(self.root_dir) / self.train_subdir / self.masks_subdir
+
+    def clean_val_dir(self) -> Optional[Path]:
+        if self.val_subdir is None:
+            return None
+        return Path(self.root_dir) / self.val_subdir / self.clean_subdir
+
+    def noisy_val_dir(self) -> Optional[Path]:
+        if self.val_subdir is None:
+            return None
+        return Path(self.root_dir) / self.val_subdir / self.noisy_subdir
+
+    def masks_val_dir(self) -> Optional[Path]:
+        if self.val_subdir is None:
+            return None
+        return Path(self.root_dir) / self.val_subdir / self.masks_subdir
 
 
 # ---------------------------------------------------------------------------
@@ -288,8 +337,31 @@ class SegStageConfig:
 
 @dataclass
 class InputDataConfig:
-    input_dir: str = "data/test"
-    image_filter: str = ".tif"
+    """Data layout for restore-then-segment inference.
+
+    Full paths are constructed as::
+
+        {root_dir}/{input_subdir}/<stem>.tif   ← degraded inputs fed into pipeline
+        {root_dir}/{clean_subdir}/<stem>.tif   ← clean reference for eval (optional)
+        {root_dir}/{masks_subdir}/<stem>.png   ← label reference for eval (optional)
+    """
+
+    root_dir: str = "train_data_ready"
+    input_subdir: str = "val/noisy"         # 8-bit .tif — degraded pipeline inputs
+    clean_subdir: Optional[str] = "val/clean"   # 8-bit .tif — restoration reference
+    masks_subdir: Optional[str] = "val/masks"   # 16-bit .png — seg label reference
+
+    image_ext: str = ".tif"
+    mask_ext: str = ".png"
+
+    def input_dir(self) -> Path:
+        return Path(self.root_dir) / self.input_subdir
+
+    def clean_dir(self) -> Optional[Path]:
+        return Path(self.root_dir) / self.clean_subdir if self.clean_subdir else None
+
+    def masks_dir(self) -> Optional[Path]:
+        return Path(self.root_dir) / self.masks_subdir if self.masks_subdir else None
 
 
 @dataclass

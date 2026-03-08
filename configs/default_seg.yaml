@@ -63,11 +63,23 @@ training:
   model_name: "cyto3_seg_custom"
 
 data:
-  # Root directory containing training images and _seg.npy label files.
-  # Cellpose expects files named:  <name>.tif  +  <name>_seg.npy
-  train_dir: "data/train"
-  test_dir: "data/test"   # optional; set null to skip validation
+  # Root of the dataset.  Full paths are constructed as:
+  #   {root_dir}/{train_subdir}/{clean_subdir}/<stem>.tif   ← training inputs
+  #   {root_dir}/{train_subdir}/{masks_subdir}/<stem>.png   ← training labels
+  #   {root_dir}/{val_subdir}/{clean_subdir}/<stem>.tif     ← val inputs
+  #   {root_dir}/{val_subdir}/{masks_subdir}/<stem>.png     ← val labels
+  # File stems are shared across subdirectories (only extensions differ).
+  root_dir: "train_data_ready"
 
-  # File extensions to load from train_dir / test_dir.
-  image_filter: ".tif"
-  mask_filter: "_seg.npy"
+  train_subdir: "train"
+  val_subdir: "val"        # set null to skip validation
+
+  # Subdirectory names inside each split.
+  clean_subdir: "clean"    # 8-bit grayscale .tif — used as model input
+  masks_subdir: "masks"    # 16-bit grayscale .png — integer instance labels
+  # noisy_subdir is not used for seg-only training; defined here for clarity.
+  noisy_subdir: "noisy"    # 8-bit grayscale .tif — available but unused in seg
+
+  # File extensions (must include the leading dot).
+  image_ext: ".tif"        # extension for clean/ and noisy/ images
+  mask_ext: ".png"         # extension for masks/ label images

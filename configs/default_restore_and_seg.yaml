@@ -65,9 +65,20 @@ eval:
 
 # ── Data I/O ─────────────────────────────────────────────────────────────────
 data:
-  # Input images to restore and segment (inference mode).
-  input_dir: "data/test"
-  image_filter: ".tif"
+  # For inference, noisy/ images are the pipeline input.
+  # For training evaluation, val/noisy/ is used as the degraded input set and
+  # val/masks/ provides ground-truth labels for metric computation.
+  root_dir: "train_data_ready"
+
+  # Inference reads from the noisy split.
+  input_subdir: "val/noisy"   # 8-bit grayscale .tif — degraded inputs
+
+  # Optional: ground-truth counterparts for quantitative evaluation.
+  clean_subdir: "val/clean"   # 8-bit grayscale .tif — restoration reference
+  masks_subdir: "val/masks"   # 16-bit grayscale .png — segmentation reference
+
+  image_ext: ".tif"
+  mask_ext: ".png"
 
 # ── Output ───────────────────────────────────────────────────────────────────
 output:

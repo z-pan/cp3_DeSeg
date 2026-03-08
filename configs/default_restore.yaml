@@ -86,12 +86,26 @@ training:
   model_name: "denoise_cyto3_custom"
 
 data:
-  # Clean (ground-truth) images used as restoration targets.
-  # Cellpose synthesizes degraded inputs on-the-fly at training time.
-  train_dir: "data/train"
-  test_dir: "data/test"   # set null to skip validation
+  # Root of the dataset.  Full paths are constructed as:
+  #   {root_dir}/{train_subdir}/{clean_subdir}/<stem>.tif   ← restoration targets
+  #   {root_dir}/{train_subdir}/{noisy_subdir}/<stem>.tif   ← degraded inputs
+  #   {root_dir}/{train_subdir}/{masks_subdir}/<stem>.png   ← labels for seg loss
+  # Stems are shared; only extensions differ.
+  root_dir: "train_data_ready"
 
-  # Segmentation label files are also required by the segmentation loss.
-  # Cellpose looks for <name>_seg.npy alongside each image.
-  image_filter: ".tif"
-  mask_filter: "_seg.npy"
+  train_subdir: "train"
+  val_subdir: "val"        # set null to skip validation
+
+  # Subdirectory names inside each split.
+  clean_subdir: "clean"    # 8-bit grayscale .tif — ground-truth / target images
+  noisy_subdir: "noisy"    # 8-bit grayscale .tif — real degraded input images
+  masks_subdir: "masks"    # 16-bit grayscale .png — instance labels for seg loss
+
+  # File extensions (must include the leading dot).
+  image_ext: ".tif"        # extension for clean/ and noisy/ images
+  mask_ext: ".png"         # extension for masks/ label images
+
+  # When real noisy images are provided in noisy_subdir, the augmentation block
+  # above is IGNORED for the noise channel — real pairs are used directly.
+  # Set noisy_subdir to null to fall back to on-the-fly synthetic augmentation.
+  use_real_noisy: true
