@@ -1,0 +1,111 @@
+# ============================================================
+# Cellpose 3 — Image Restoration Training & Inference Config
+# ============================================================
+# Uses: denoise.DenoiseModel  (standalone restoration)
+#   or: denoise.CellposeDenoiseModel  (restore + segment, end-to-end)
+#
+# Training architecture:
+#   trainable restoration network  →  frozen cyto3 segmentation network
+#   loss = segmentation loss  +  perceptual loss
+#
+# DO NOT use model_type="cpsam" — restoration is cyto3-only.
+# ============================================================
+
+model:
+  # Restoration model family — must match a cyto3 denoise model.
+  model_type: "cyto3"
+
+  # Which degradation this model is trained to reverse.
+  # Options:
+  #   denoise_cyto3   → remove Poisson / Gaussian noise
+  #   deblur_cyto3    → reverse optical blur (deconvolution)
+  #   upsample_cyto3  → super-resolution upsampling
+  # Nucleus variants: denoise_nuclei, deblur_nuclei, upsample_nuclei
+  restore_type: "denoise_cyto3"
+
+  # If true, a second restoration model (nuclei-family) is applied to the
+  # nuclear channel (chan2) in addition to the cytoplasm channel.
+  chan2_restore: false
+
+eval:
+  # channels: [cytoplasm_channel, nuclear_channel] — same convention as seg.
+  # REQUIRED when passing output to cyto3 segmentation downstream.
+  channels: [0, 0]
+
+  # Cell diameter in pixels — passed through to segmentation when using
+  # CellposeDenoiseModel.  Ignored by standalone DenoiseModel.eval().
+  diameter: 30.0
+
+# Frozen segmentation backbone used to compute perceptual + segmentation loss
+# during restoration training.  Must be cyto3.
+seg_model:
+  model_type: "cyto3"
+
+# ============================================================
+# Degradation augmentation applied to clean images at training time.
+# Cellpose synthesizes degraded inputs on-the-fly from clean training images.
+# Only the parameters relevant to restore_type need to be non-zero.
+# ============================================================
+augmentation:
+  # Noise simulation type applied to clean inputs during training.
+  # Options: "poisson", "gaussian", "mixed"
+  noise_type: "poisson"
+
+  # Poisson noise level (0–1).  Active when restore_type=denoise_*.
+  # 0.8 matches the default used in the Cellpose 3 paper.
+  poisson: 0.8
+
+  # Gaussian blur sigma (pixels).  Active when restore_type=deblur_*.
+  # Set to 0 for denoise training; typical deblur values: 1.0–3.0.
+  blur: 0.0
+
+  # Downsampling factor.  Active when restore_type=upsample_*.
+  # Set to 1 (no downsampling) for denoise/deblur training.
+  # Typical upsample values: 2 or 4.
+  downsample: 1
+
+training:
+  # Learning rate for the restoration network.
+  # The frozen segmentation backbone is NOT updated.
+  learning_rate: 0.001
+
+  weight_decay: 1.0e-5
+
+  # Restoration models typically need many more epochs than segmentation.
+  n_epochs: 2000
+
+  batch_size: 8
+
+  # Save a checkpoint every N epochs.
+  save_every: 200
+
+  # Directory where trained restoration model weights are written.
+  save_path: "outputs/models"
+
+  # Base name for the saved model file.
+  model_name: "denoise_cyto3_custom"
+
+data:
+  # Root of the dataset.  Full paths are constructed as:
+  #   {root_dir}/{train_subdir}/{clean_subdir}/<stem>.tif   ← restoration targets
+  #   {root_dir}/{train_subdir}/{noisy_subdir}/<stem>.tif   ← degraded inputs
+  #   {root_dir}/{train_subdir}/{masks_subdir}/<stem>.png   ← labels for seg loss
+  # Stems are shared; only extensions differ.
+  root_dir: "train_data_ready"
+
+  train_subdir: "train"
+  val_subdir: "val"        # set null to skip validation
+
+  # Subdirectory names inside each split.
+  clean_subdir: "clean"    # 8-bit grayscale .tif — ground-truth / target images
+  noisy_subdir: "noisy"    # 8-bit grayscale .tif — real degraded input images
+  masks_subdir: "masks"    # 16-bit grayscale .png — instance labels for seg loss
+
+  # File extensions (must include the leading dot).
+  image_ext: ".tif"        # extension for clean/ and noisy/ images
+  mask_ext: ".png"         # extension for masks/ label images
+
+  # When real noisy images are provided in noisy_subdir, the augmentation block
+  # above is IGNORED for the noise channel — real pairs are used directly.
+  # Set noisy_subdir to null to fall back to on-the-fly synthetic augmentation.
+  use_real_noisy: true

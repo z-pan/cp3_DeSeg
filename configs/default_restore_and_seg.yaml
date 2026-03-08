@@ -1,0 +1,95 @@
+# ============================================================
+# Cellpose 3 — Chained Restore-then-Segment Pipeline Config
+# ============================================================
+# Two execution modes (set via pipeline.use_integrated_model):
+#
+#   true  → denoise.CellposeDenoiseModel
+#            Single object runs both steps end-to-end.
+#            Returns: (masks, flows, styles, diams, restored_imgs)
+#            Best for inference; both nets share the same channels/diameter.
+#
+#   false → denoise.DenoiseModel.eval()  →  models.CellposeModel.eval()
+#            Sequential, separate objects.  Allows mixing custom checkpoints
+#            for restoration and segmentation independently.
+#
+# DO NOT set any pretrained_model/model_type to "cpsam".
+# ============================================================
+
+pipeline:
+  # Descriptive name for this experiment run (used in output paths).
+  name: "restore_then_seg"
+
+  # true  = CellposeDenoiseModel (single integrated object, recommended)
+  # false = DenoiseModel → CellposeModel (two separate objects, more flexible)
+  use_integrated_model: true
+
+# ── Restoration stage ────────────────────────────────────────────────────────
+restore:
+  model_type: "cyto3"
+
+  # Options: denoise_cyto3 | deblur_cyto3 | upsample_cyto3
+  #          denoise_nuclei | deblur_nuclei | upsample_nuclei
+  restore_type: "denoise_cyto3"
+
+  # Apply a second nucleus-family restoration model to the nuclear channel.
+  chan2_restore: false
+
+  # Path to a custom-trained restoration checkpoint.
+  # Leave null to use the built-in pretrained model.
+  checkpoint: null
+
+# ── Segmentation stage ───────────────────────────────────────────────────────
+seg:
+  # REQUIRED: cyto3 Res-U-Net — do NOT change to cpsam.
+  pretrained_model: "cyto3"
+  backbone: "default"
+
+  # Path to a custom-trained segmentation checkpoint.
+  # Leave null to use the built-in pretrained model.
+  checkpoint: null
+
+# ── Shared eval parameters (apply to both stages) ────────────────────────────
+eval:
+  # channels: [cytoplasm_channel, nuclear_channel]  (same as default_seg.yaml)
+  channels: [0, 0]
+
+  # Mean cell diameter in pixels — REQUIRED for cyto3 segmentation.
+  diameter: 30.0
+
+  # Segmentation quality thresholds (applied after restoration).
+  flow_threshold: 0.4
+  cellprob_threshold: 0.0
+
+  do_3D: false
+  niter: null
+
+# ── Data I/O ─────────────────────────────────────────────────────────────────
+data:
+  # For inference, noisy/ images are the pipeline input.
+  # For training evaluation, val/noisy/ is used as the degraded input set and
+  # val/masks/ provides ground-truth labels for metric computation.
+  root_dir: "train_data_ready"
+
+  # Inference reads from the noisy split.
+  input_subdir: "val/noisy"   # 8-bit grayscale .tif — degraded inputs
+
+  # Optional: ground-truth counterparts for quantitative evaluation.
+  clean_subdir: "val/clean"   # 8-bit grayscale .tif — restoration reference
+  masks_subdir: "val/masks"   # 16-bit grayscale .png — segmentation reference
+
+  image_ext: ".tif"
+  mask_ext: ".png"
+
+# ── Output ───────────────────────────────────────────────────────────────────
+output:
+  # Root directory for all pipeline outputs.
+  save_path: "outputs/predictions"
+
+  # Save binary/label masks as .tif files.
+  save_masks: true
+
+  # Save the restored (denoised/deblurred/upsampled) intermediate images.
+  save_restored: true
+
+  # Save RGB flow visualisations.
+  save_flows: false
