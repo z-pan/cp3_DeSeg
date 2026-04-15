@@ -48,16 +48,4 @@
 - `data/` — Symlinked or .gitignored data directory
 - `outputs/` — Training outputs (models, logs, predictions)
 
-## Code Style
-- Type hints on all function signatures
-- Docstrings (Google style) on all public functions
-- Use argparse or hydra for CLI arguments
-- Use logging module, not print statements
-- Config-driven: all hyperparameters in YAML, not hardcoded
-```
-- `configs/experiment/train_deblur.yaml` — deblur restoration training
-- `configs/experiment/train_upsample.yaml` — upsample restoration training
-- `configs/experiment/restore_then_seg.yaml` — chained pipeline
-
-Do NOT create any config with pretrained_model="cpsam" —
-this project is exclusively for Cellpose 3 (cyto3) architecture.
+Do NOT create any config with pretrained_model="cpsam" — this project is exclusively for Cellpose 3 (cyto3) architecture.
